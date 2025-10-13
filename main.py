@@ -1,18 +1,13 @@
+# main.py
 from fastapi import FastAPI
-import httpx
+from routes.api import router as api_router
 
-app = FastAPI()
+app = FastAPI(title="JSONPlaceholder proxy API")
 
-BASE_URL = "https://jsonplaceholder.typicode.com"
+# подключаем router с префиксом (если хочешь без префикса — убери prefix)
+app.include_router(api_router)  # роуты будут на /users и /posts
 
-@app.get("/users")
-async def get_users():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/users")
-        return response.json()
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
 
-@app.get("/posts")
-async def get_posts():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/posts")
-        return response.json()
