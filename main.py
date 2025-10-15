@@ -1,14 +1,22 @@
-# main.py
-from fastapi import FastAPI
-from routes.api import router as api_router
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from database.db import SessionLocal, engine, Base
+import models
 
-app = FastAPI(title="JSONPlaceholder proxy API")
+app = FastAPI()
 
-# подключаем router с префиксом (если хочешь без префикса — убери prefix)
-app.include_router(api_router)  # роуты будут на /users и /posts
+# Создаём таблицы при старте
+Base.metadata.create_all(bind=engine)
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+# Зависимость для подключения к БД
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# Обновление кода от 14 октября
+@app.get("/")
+def read_root():
+    return {"message": "App connected successfully!"}
+# Обновление от 15 октября
