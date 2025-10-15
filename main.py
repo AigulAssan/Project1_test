@@ -1,22 +1,25 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-from database.db import SessionLocal, engine, Base
-import models
+from fastapi import FastAPI
+from routes import api
+from database.db import engine
+from models import user
+
+models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
 
-# Создаём таблицы при старте
-Base.metadata.create_all(bind=engine)
-
-# Зависимость для подключения к БД
 def get_db():
-    db = SessionLocal()
+    db = database.SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-@app.get("/")
-def read_root():
-    return {"message": "App connected successfully!"}
+@app.post("/users/", response_model=schemas.UserResponse)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = models.User(name=user.name, email=user.email)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 # Обновление от 15 октября
