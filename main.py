@@ -1,25 +1,34 @@
-from fastapi import FastAPI
-from routes import api
-from database.db import engine
-from models import user
-
-models.Base.metadata.create_all(bind=database.engine)
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from database import db
+from models import user as models
+from schemas import user_schema as schemas
+import httpx
 
 app = FastAPI()
 
 def get_db():
-    db = database.SessionLocal()
+    database = db.SessionLocal()
     try:
-        yield db
+        yield database
     finally:
-        db.close()
+        database.close()
 
-@app.post("/users/", response_model=schemas.UserResponse)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = models.User(name=user.name, email=user.email)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
 
-# Обновление от 15 октября
+@app.get("/users/", response_model=list[schemas.UserResponse])
+def get_and_store_users(db: Session = Depends(get_db)):
+    # 1️⃣ Пример получения данных с внешнего API
+    response = httpx.get("https://jsonplaceholder.typicode.com/users")
+    users_data = response.json()
+
+    # 2️⃣ Сохраняем пользователей в БД, если их ещё нет
+    for user_data in users_data:
+        existing_user = db.query(models.User).filter(models.User.email == user_data["email"]).first()
+        if not existing_user:
+            db_user = models.User(name=user_data["name"], email=user_data["email"])
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
+
+    # 3️⃣ Возвращаем всех пользователей из БД
+    return db.query(models.User).all()
